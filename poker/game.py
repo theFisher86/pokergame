@@ -9,7 +9,6 @@ from .hand_evaluator import score_hand
 from .cards import SUIT_COLORS
 from .jokers import Joker, ExtraMultiplierJoker, AceHighJoker
 
-
 class PokerGame:
     """Simple Balatro-like poker game skeleton using Pygame."""
 
