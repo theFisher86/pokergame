@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 from typing import List, Optional
 
 import logging
@@ -7,9 +8,9 @@ import pygame
 
 from .deck import Deck
 from .hand_evaluator import score_hand
-from .cards import SUIT_COLORS, RANKS
+from .cards import SUIT_COLORS, RANKS, SUITS
 from .jokers import Joker, ExtraMultiplierJoker, AceHighJoker
-
+from .assets import svg_to_surface, FELT_SVG, CARD_BACK_SVG
 
 class PokerGame:
     """Simple Balatro-like poker game skeleton using Pygame."""
@@ -17,7 +18,7 @@ class PokerGame:
     BG_COLOR = (20, 120, 20)
     CARD_COLOR = (255, 255, 255)
     TEXT_COLOR = (0, 0, 0)
-    GLOW_COLOR = (255, 255, 0)
+    GLOW_COLOR = (255, 255, 255)
     PANEL_COLOR = (30, 30, 30)
     BLUE = (50, 100, 200)
     RED = (200, 50, 50)
@@ -46,6 +47,9 @@ class PokerGame:
         self.round = 1
         self.money = 0
 
+        self.bg_tile: Optional[pygame.Surface] = None
+        self.card_back: Optional[pygame.Surface] = None
+
         # button rects (set in draw_ui)
         self.play_button: Optional[pygame.Rect] = None
         self.discard_button: Optional[pygame.Rect] = None
@@ -57,30 +61,36 @@ class PokerGame:
             logging.debug("Starting game loop")
         pygame.init()
         size = (800, 600)
-        # allow running without a display (useful for tests)
         if os.environ.get("SDL_VIDEODRIVER") == "dummy":
             os.environ["SDL_AUDIODRIVER"] = "dummy"
-        self.screen = pygame.display.set_mode(size)
+        self.screen = pygame.display.set_mode(size, pygame.RESIZABLE)
         pygame.display.set_caption("Poker Game")
-        # use a font with broad glyph support
         self.font = pygame.font.SysFont("freesansbold", 36)
         self.small_font = pygame.font.SysFont("freesansbold", 24)
+        self.bg_tile = svg_to_surface(FELT_SVG, (64, 64))
+        self.card_back = svg_to_surface(CARD_BACK_SVG, (80, 120))
         try:
             self.game_loop()
         except Exception:
             logging.exception("Unhandled exception in game loop")
             raise
+
     def draw_hand(self) -> None:
         if not self.screen:
             return
-        self.screen.fill(self.BG_COLOR)
+        if self.bg_tile:
+            for x in range(0, self.screen.get_width(), self.bg_tile.get_width()):
+                for y in range(0, self.screen.get_height(), self.bg_tile.get_height()):
+                    self.screen.blit(self.bg_tile, (x, y))
+        else:
+            self.screen.fill(self.BG_COLOR)
         self.card_rects = []
         n = len(self.hand)
         center_x = self.screen.get_width() // 2
         base_y = 300
         curvature = 5
         angle_step = 10
-        offset_x = 60
+        offset_x = 40
         card_w, card_h = 80, 120
         mouse_pos = pygame.mouse.get_pos()
         for i, card in enumerate(self.hand):
@@ -90,20 +100,16 @@ class PokerGame:
             if i in self.selected:
                 y -= 30
             card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
-            card_surf.fill(self.CARD_COLOR)
+            pygame.draw.rect(card_surf, self.CARD_COLOR, card_surf.get_rect(), border_radius=8)
             color = SUIT_COLORS[card.suit]
-            pygame.draw.rect(card_surf, color, card_surf.get_rect(), 3)
+            pygame.draw.rect(card_surf, color, card_surf.get_rect(), 3, border_radius=8)
             self._draw_card_contents(card_surf, card, color)
             rotated = pygame.transform.rotate(card_surf, angle)
             rect = rotated.get_rect(center=(x, y))
             hovered = rect.collidepoint(mouse_pos)
             if hovered:
-                # redraw with glow
-                card_surf2 = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
-                card_surf2.fill(self.CARD_COLOR)
-                self._draw_card_contents(card_surf2, card, color)
-                pygame.draw.rect(card_surf2, self.GLOW_COLOR, card_surf2.get_rect(), 6)
-                rotated = pygame.transform.rotate(card_surf2, angle)
+                glow = self._apply_glow(card_surf)
+                rotated = pygame.transform.rotate(glow, angle)
                 rect = rotated.get_rect(center=(x, y))
             self.card_rects.append(rect)
             self.screen.blit(rotated, rect)
@@ -118,6 +124,21 @@ class PokerGame:
         # center suit symbol drawn via shapes
         cx, cy = surf.get_width() // 2, surf.get_height() // 2 + 10
         self._draw_suit_symbol(surf, card.suit, (cx, cy))
+
+    def _apply_glow(self, surf: pygame.Surface) -> pygame.Surface:
+        """Return a copy of the card surface with a white gradient glow."""
+        w, h = surf.get_size()
+        glow = pygame.Surface((w + 20, h + 20), pygame.SRCALPHA)
+        for i in range(10, 0, -1):
+            alpha = int(15 * (11 - i))
+            pygame.draw.rect(
+                glow,
+                (*self.GLOW_COLOR, alpha),
+                pygame.Rect(10 - i, 10 - i, w + 2 * i, h + 2 * i),
+                border_radius=8,
+            )
+        glow.blit(surf, (10, 10))
+        return glow
 
     def _draw_suit_symbol(self, surf: pygame.Surface, suit: str, center: tuple[int, int]) -> None:
         x, y = center
@@ -145,8 +166,8 @@ class PokerGame:
         if not self.screen:
             return
         screen = self.screen
-        # left panel
-        panel = pygame.Rect(20, 20, 180, 560)
+        # left panel pinned to screen
+        panel = pygame.Rect(20, 20, 180, screen.get_height() - 40)
         pygame.draw.rect(screen, self.PANEL_COLOR, panel)
         y = panel.y + 10
         goal_txt = self.small_font.render(f"Score at least {self.goal}", True, (255, 255, 255))
@@ -178,8 +199,9 @@ class PokerGame:
         screen.blit(round_txt, (panel.x + 10, y))
 
         # buttons bottom center
-        self.play_button = pygame.Rect(280, 520, 120, 40)
-        self.discard_button = pygame.Rect(420, 520, 120, 40)
+        btn_y = screen.get_height() - 80
+        self.play_button = pygame.Rect(screen.get_width() // 2 - 140, btn_y, 120, 40)
+        self.discard_button = pygame.Rect(screen.get_width() // 2 - 10, btn_y, 120, 40)
         pygame.draw.rect(screen, self.BLUE, self.play_button)
         pygame.draw.rect(screen, self.RED, self.discard_button)
         play_txt = self.small_font.render("Play Hand", True, (255, 255, 255))
@@ -187,8 +209,9 @@ class PokerGame:
         screen.blit(play_txt, (self.play_button.x + 10, self.play_button.y + 10))
         screen.blit(disc_txt, (self.discard_button.x + 20, self.discard_button.y + 10))
 
-        self.sort_rank_button = pygame.Rect(340, 470, 80, 30)
-        self.sort_suit_button = pygame.Rect(430, 470, 80, 30)
+        sort_y = btn_y - 50
+        self.sort_rank_button = pygame.Rect(screen.get_width() // 2 - 90, sort_y, 80, 30)
+        self.sort_suit_button = pygame.Rect(screen.get_width() // 2 + 0, sort_y, 80, 30)
         pygame.draw.rect(screen, (100, 100, 100), self.sort_rank_button)
         pygame.draw.rect(screen, (100, 100, 100), self.sort_suit_button)
         sr_txt = self.small_font.render("Rank", True, (255, 255, 255))
@@ -198,8 +221,11 @@ class PokerGame:
 
         # deck info bottom right
         deck_rect = pygame.Rect(screen.get_width() - 110, screen.get_height() - 150, 80, 120)
-        pygame.draw.rect(screen, self.CARD_COLOR, deck_rect)
-        pygame.draw.rect(screen, (0, 0, 0), deck_rect, 2)
+        if self.card_back:
+            screen.blit(self.card_back, deck_rect)
+        else:
+            pygame.draw.rect(screen, self.CARD_COLOR, deck_rect)
+            pygame.draw.rect(screen, (0, 0, 0), deck_rect, 2)
         deck_txt = self.small_font.render(f"{len(self.deck)}/52", True, (0, 0, 0))
         screen.blit(deck_txt, deck_rect.move(5, 5))
 
@@ -226,6 +252,8 @@ class PokerGame:
                     logging.debug("Event: %s", event)
                 if event.type == pygame.QUIT:
                     running = False
+                elif event.type == pygame.VIDEORESIZE:
+                    self.screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self.play_button and self.play_button.collidepoint(event.pos):
                         self.play_selected_hand()
@@ -235,7 +263,7 @@ class PokerGame:
                         self.hand.sort(key=lambda c: RANKS.index(c.rank))
                         self.selected.clear()
                     elif self.sort_suit_button and self.sort_suit_button.collidepoint(event.pos):
-                        self.hand.sort(key=lambda c: (c.suit, RANKS.index(c.rank)))
+                        self.hand.sort(key=lambda c: (SUITS.index(c.suit), RANKS.index(c.rank)))
                         self.selected.clear()
                     else:
                         for i in reversed(range(len(self.card_rects))):
@@ -286,6 +314,10 @@ class PokerGame:
         self.round_score += total
         self.hands_left -= 1
         self.replace_selected()
+        if self.round_score >= self.goal:
+            self.round_win()
+        elif self.hands_left == 0 and self.round_score < self.goal:
+            self.round_loss()
 
     def discard_selected_cards(self) -> None:
         if not self.selected or self.discards_left <= 0:
@@ -295,6 +327,70 @@ class PokerGame:
         self.discards_left -= 1
         self.replace_selected()
 
+    def round_win(self) -> None:
+        self.show_message("You win this round!", win=True)
+        self.round += 1
+        self.goal += 100
+        self.round_score = 0
+        self.base_chips = 0
+        self.multiplier = 0
+        self.hands_left = 4
+        self.discards_left = 3
+        self.deck = Deck()
+        self.hand = self.deck.draw(8)
+        self.selected.clear()
+
+    def round_loss(self) -> None:
+        self.show_message("You're a loser", joker=True)
+        self.round = 1
+        self.goal = 300
+        self.round_score = 0
+        self.base_chips = 0
+        self.multiplier = 0
+        self.hands_left = 4
+        self.discards_left = 3
+        self.deck = Deck()
+        self.hand = self.deck.draw(8)
+        self.selected.clear()
+
+    def show_message(self, text: str, win: bool = False, joker: bool = False) -> None:
+        if not self.screen:
+            return
+        clock = pygame.time.Clock()
+        particles: List[list] = []
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    return
+            self.draw_hand()
+            overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+            color = [random.randint(100, 255) for _ in range(3)]
+            txt = self.font.render(text, True, color)
+            rect = txt.get_rect(center=(self.screen.get_width() // 2, 100))
+            overlay.blit(txt, rect)
+            if win:
+                if len(particles) < 100:
+                    particles.append([random.randint(0, self.screen.get_width()), 0, random.randint(-2, 2), random.randint(2, 5), [random.randint(0, 255) for _ in range(3)]])
+                for p in particles:
+                    p[0] += p[2]
+                    p[1] += p[3]
+                    pygame.draw.circle(overlay, p[4], (int(p[0]), int(p[1])), 3)
+            if joker:
+                self._draw_joker(overlay)
+            self.screen.blit(overlay, (0, 0))
+            pygame.display.flip()
+            clock.tick(30)
+
+    def _draw_joker(self, surf: pygame.Surface) -> None:
+        w, h = surf.get_size()
+        cx, cy = w // 2, h // 2
+        pygame.draw.circle(surf, (255, 255, 255), (cx, cy + 40), 40)
+        pygame.draw.circle(surf, (0, 0, 0), (cx - 15, cy + 30), 5)
+        pygame.draw.circle(surf, (0, 0, 0), (cx + 15, cy + 30), 5)
+        pygame.draw.arc(surf, (200, 0, 0), (cx - 20, cy + 30, 40, 30), 3.14, 0, 3)
 
 def main(debug: bool = False) -> int:
     logging.basicConfig(
