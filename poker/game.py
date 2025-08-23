@@ -2,6 +2,7 @@ import os
 import sys
 from typing import List, Optional
 
+
 import pygame
 
 from .deck import Deck
@@ -58,7 +59,7 @@ class PokerGame:
         # use a font with broad glyph support
         self.font = pygame.font.SysFont("freesansbold", 36)
         self.small_font = pygame.font.SysFont("freesansbold", 24)
-        self.game_loop()
+        self.font = pygame.font.SysFont("comicsansms", 36)
 
     def draw_hand(self) -> None:
         if not self.screen:
