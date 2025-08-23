@@ -11,10 +11,12 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Click cards to select up to five from the eight dealt. The current
-selection is scored using Balatro-style chips and multipliers. Press the
-space bar to draw a new hand.
+Click cards to select up to five from the eight dealt. Use the **Play Hand**
+button to score the selection or **Discard** to redraw the chosen cards.
+Buttons allow sorting the hand by rank or suit. Cards fan out in an inverted
+arc; hovering applies a soft glow and clicking lifts them to show selection.
 
-Cards fan out in a hand-like arc with suit-coloured outlines. Selecting a
-card lifts it slightly to show it's chosen. A couple of sample jokers apply
-bonus chips or multipliers to the scored hand.
+The left panel tracks the round score, goal, remaining hands, discards, and
+shows the base chip and multiplier values of the last played hand. A simple
+deck display in the corner shows how many cards remain. A couple of sample
+jokers apply bonus chips or multipliers to the scored hand.

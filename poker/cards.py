@@ -1,5 +1,3 @@
-import random
-
 # Classic suit glyphs for broad font support
 SUITS = ['♠', '♥', '♦', '♣']
 SUIT_COLORS = {
