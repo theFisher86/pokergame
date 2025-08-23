@@ -70,7 +70,6 @@ class PokerGame:
         except Exception:
             logging.exception("Unhandled exception in game loop")
             raise
-
     def draw_hand(self) -> None:
         if not self.screen:
             return
