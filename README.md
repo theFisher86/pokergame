@@ -9,6 +9,8 @@ Install dependencies and run the game:
 ```bash
 pip install -r requirements.txt
 python main.py
+# show debug logs
+python main.py --debug
 ```
 
 Click cards to select up to five from the eight dealt. Use the **Play Hand**

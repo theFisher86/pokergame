@@ -2,7 +2,7 @@ import os
 import sys
 from typing import List, Optional
 
-
+import logging
 import pygame
 
 from .deck import Deck
@@ -22,7 +22,8 @@ class PokerGame:
     BLUE = (50, 100, 200)
     RED = (200, 50, 50)
 
-    def __init__(self) -> None:
+    def __init__(self, debug: bool = False) -> None:
+        self.debug = debug
         self.deck = Deck()
         self.hand: List = self.deck.draw(8)
         self.selected: set[int] = set()
@@ -31,6 +32,9 @@ class PokerGame:
         self.font = None
         self.small_font = None
         self.jokers: List[Joker] = [ExtraMultiplierJoker(), AceHighJoker()]
+
+        if self.debug:
+            logging.debug("Game initialized with hand: %s", self.hand)
 
         # round state
         self.goal = 300
@@ -49,6 +53,8 @@ class PokerGame:
         self.sort_suit_button: Optional[pygame.Rect] = None
 
     def start(self) -> None:
+        if self.debug:
+            logging.debug("Starting game loop")
         pygame.init()
         size = (800, 600)
         # allow running without a display (useful for tests)
@@ -59,8 +65,11 @@ class PokerGame:
         # use a font with broad glyph support
         self.font = pygame.font.SysFont("freesansbold", 36)
         self.small_font = pygame.font.SysFont("freesansbold", 24)
-        self.font = pygame.font.SysFont("comicsansms", 36)
-
+        try:
+            self.game_loop()
+        except Exception:
+            logging.exception("Unhandled exception in game loop")
+            raise
     def draw_hand(self) -> None:
         if not self.screen:
             return
@@ -213,6 +222,8 @@ class PokerGame:
         clock = pygame.time.Clock()
         while running:
             for event in pygame.event.get():
+                if self.debug:
+                    logging.debug("Event: %s", event)
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -237,6 +248,8 @@ class PokerGame:
                                 break
             self.draw_hand()
             clock.tick(30)
+        if self.debug:
+            logging.debug("Exiting game loop")
         pygame.quit()
 
     def replace_selected(self) -> None:
@@ -244,7 +257,11 @@ class PokerGame:
             return
         indices = sorted(self.selected)
         needed = len(indices)
+        if self.debug:
+            logging.debug("Replacing cards at indices %s", indices)
         if len(self.deck) < needed:
+            if self.debug:
+                logging.debug("Reshuffling new deck")
             self.deck = Deck()
         new_cards = self.deck.draw(needed)
         for idx, card in zip(indices, new_cards):
@@ -260,6 +277,10 @@ class PokerGame:
         for joker in self.jokers:
             chips, mult = joker.apply(cards, chips, mult)
         total = chips * mult
+        if self.debug:
+            logging.debug(
+                "Played %s for %s chips x%s => %s", name, chips, mult, total
+            )
         self.base_chips = chips
         self.multiplier = mult
         self.round_score += total
@@ -269,12 +290,18 @@ class PokerGame:
     def discard_selected_cards(self) -> None:
         if not self.selected or self.discards_left <= 0:
             return
+        if self.debug:
+            logging.debug("Discarding %s cards", len(self.selected))
         self.discards_left -= 1
         self.replace_selected()
 
 
-def main() -> int:
-    game = PokerGame()
+def main(debug: bool = False) -> int:
+    logging.basicConfig(
+        level=logging.DEBUG if debug else logging.WARNING,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+    game = PokerGame(debug=debug)
     game.start()
     return 0
 
