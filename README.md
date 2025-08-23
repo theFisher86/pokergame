@@ -11,4 +11,6 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Press the space bar to draw a new hand.
+Click cards to select up to five from the eight dealt. The current
+selection is scored using Balatro-style chips and multipliers. Press the
+space bar to draw a new hand.
