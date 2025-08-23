@@ -39,7 +39,6 @@ CARD_SCORES = {
     "A": 15,
 }
 
-
 def _is_straight(values: Iterable[int]) -> bool:
     values = sorted(values)
     return all(b - a == 1 for a, b in zip(values, values[1:]))
@@ -81,7 +80,6 @@ def evaluate_hand(cards: Iterable[Card]) -> Tuple[int, str]:
     if counts[0] == 2:
         return 1, HAND_RANKS[1]
     return 0, HAND_RANKS[0]
-
 
 def score_hand(cards: Iterable[Card]) -> Tuple[str, int, int, int, int]:
     """Return scoring details for a five-card hand.
