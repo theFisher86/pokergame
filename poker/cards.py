@@ -1,7 +1,13 @@
 import random
 
-# Use emoji variants for suits so they render in the UI
-SUITS = ['♠️', '♥️', '♦️', '♣️']
+# Classic suit glyphs for broad font support
+SUITS = ['♠', '♥', '♦', '♣']
+SUIT_COLORS = {
+    '♠': (0, 0, 0),
+    '♣': (0, 0, 0),
+    '♥': (200, 0, 0),
+    '♦': (200, 0, 0),
+}
 RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 RANK_VALUES = {r: i for i, r in enumerate(RANKS, start=2)}
 
