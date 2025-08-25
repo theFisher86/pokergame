@@ -8,7 +8,6 @@ import skia
 # pygame-svg is optional; fall back to skia if it's unavailable.
 _pygame_svg = importlib.util.find_spec("pygame_svg")
 
-
 def svg_to_surface(svg: str, size: tuple[int, int]) -> pygame.Surface:
     """Render an SVG string to a pygame surface at the given size."""
     width, height = size

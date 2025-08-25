@@ -12,7 +12,6 @@ from .cards import SUIT_COLORS, RANKS, SUITS
 from .jokers import Joker, ExtraMultiplierJoker, AceHighJoker
 from .assets import svg_to_surface, FELT_SVG, CARD_BACK_SVG
 
-
 class PokerGame:
     """Simple Balatro-like poker game skeleton using Pygame."""
 
@@ -392,7 +391,6 @@ class PokerGame:
         pygame.draw.circle(surf, (0, 0, 0), (cx - 15, cy + 30), 5)
         pygame.draw.circle(surf, (0, 0, 0), (cx + 15, cy + 30), 5)
         pygame.draw.arc(surf, (200, 0, 0), (cx - 20, cy + 30, 40, 30), 3.14, 0, 3)
-
 
 def main(debug: bool = False) -> int:
     logging.basicConfig(
