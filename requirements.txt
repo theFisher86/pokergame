@@ -1,0 +1,4 @@
+pygame>=2.5.0
+
+skia-python>=138.0
+# pygame-svg can be installed optionally if available
