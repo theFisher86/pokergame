@@ -1,12 +1,29 @@
 import io
+import importlib
+import importlib.util
 import pygame
-import cairosvg
+import skia
 
+
+# pygame-svg is optional; fall back to skia if it's unavailable.
+_pygame_svg = importlib.util.find_spec("pygame_svg")
 
 def svg_to_surface(svg: str, size: tuple[int, int]) -> pygame.Surface:
     """Render an SVG string to a pygame surface at the given size."""
-    png_bytes = cairosvg.svg2png(bytestring=svg.encode("utf-8"), output_width=size[0], output_height=size[1])
-    return pygame.image.load(io.BytesIO(png_bytes)).convert_alpha()
+    width, height = size
+    if _pygame_svg is not None:  # pragma: no cover - depends on optional package
+        pygame_svg = importlib.import_module("pygame_svg")
+        return pygame_svg.svg_to_surface(svg, width=width, height=height)
+
+    stream = skia.MemoryStream(bytes(svg, "utf-8"))
+    dom = skia.SVGDOM.MakeFromStream(stream)
+    surface = skia.Surface(width, height)
+    canvas = surface.getCanvas()
+    canvas.clear(skia.ColorTRANSPARENT)
+    dom.setContainerSize(skia.Size(width, height))
+    dom.render(canvas)
+    image = surface.makeImageSnapshot()
+    return pygame.image.load(io.BytesIO(image.encodeToData().bytes())).convert_alpha()
 
 FELT_SVG = """
 <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>

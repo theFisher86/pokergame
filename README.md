@@ -13,6 +13,11 @@ python main.py
 python main.py --debug
 ```
 
+SVG assets are rasterized using `skia-python`, a prebuilt binding to Google
+Skia that avoids external system libraries. If you have
+[`pygame-svg`](https://github.com/missionpinball/pygame-svg) available it will
+be used automatically, but it is not required.
+
 Click cards to select up to five from the eight dealt. Use the **Play Hand**
 button to score the selection or **Discard** to redraw the chosen cards.
 Buttons allow sorting the hand by rank or suit. Cards fan out in an inverted
